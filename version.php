@@ -32,4 +32,5 @@ $plugin->component = 'block_search_books';
 $maturity = MATURITY_ALPHA;
 
 $plugin->dependencies = array(
-    'mod_book' =>  2011032000);  // Requires mod_block version (20_STABLE)
+    'mod_book' =>  2011032000,     // Requires mod_block version (20_STABLE)
+    'mod_glossary' => 2010111501); // Requires mod_glossary version (20_STABLE)

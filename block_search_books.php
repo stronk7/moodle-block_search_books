@@ -44,7 +44,7 @@ class block_search_books extends block_base {
 
         // Book not available, we won't do anything in the block
         if (!file_exists($CFG->dirroot . '/mod/book/lib.php')) {
-            //return '';
+            return '';
         }
 
         if ($this->content !== NULL) {

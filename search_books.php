@@ -25,21 +25,19 @@
 
 // Search for query terms in course books
 
-include_once ("../../config.php");
-include_once($CFG->dirroot.'/mod/glossary/lib.php');
+require_once('../../config.php');
+require_once($CFG->dirroot . '/mod/glossary/lib.php');
+
+DEFINE('MAXRESULTSPERPAGE', 100);  // Limit results per page
+DEFINE('MAXPAGEALLOWED', 99);      // Limit number of pages to show
 
 $courseid = required_param('courseid', PARAM_INT);
-$query    = required_param('query');
+$query    = required_param('query', PARAM_NOTAGS);
 $page     = optional_param('page', 0, PARAM_INT);
-
-require_login($courseid);
-
-DEFINE('MAXRESULTSPERPAGE', 100);  //Limit results per page
-DEFINE('MAXPAGEALLOWED', 99);    //Limit number of pages to show
 
 function search( $query, $course, $offset, &$countentries ) {
 
-    global $CFG, $USER;
+    global $CFG, $USER, $DB;
 
     /// Some differences in syntax for PostgreSQL
     if ($CFG->dbfamily == "postgres") {
@@ -102,8 +100,6 @@ function search( $query, $course, $offset, &$countentries ) {
     //Add seach conditions in titles and contents
     $where = "AND (( $titlesearch) OR ($contentsearch) ) ";
 
-    $module = get_record('modules', 'name', 'book');
-
     $sqlselect  = "SELECT DISTINCT bc.*";
     $sqlfrom    = "FROM {$CFG->prefix}book_chapters bc,
                         {$CFG->prefix}book b";
@@ -120,8 +116,8 @@ function search( $query, $course, $offset, &$countentries ) {
         $limitnum = MAXRESULTSPERPAGE;
     }
 
-    $countentries = count_records_sql("select count(*) $sqlfrom $sqlwhere");
-    $allentries =   get_records_sql("$sqlselect $sqlfrom $sqlwhere $sqlorderby", $limitfrom, $limitnum);
+    $countentries = $DB->count_records_sql("select count(*) $sqlfrom $sqlwhere", array());
+    $allentries =   $DB->get_records_sql("$sqlselect $sqlfrom $sqlwhere $sqlorderby", array(), $limitfrom, $limitnum);
 
     return $allentries;
 }
@@ -129,35 +125,37 @@ function search( $query, $course, $offset, &$countentries ) {
 //////////////////////////////////////////////////////////
 // The main part of this script
 
-$strsearchresults = get_string("searchresults","block_search_books");
+$PAGE->set_pagelayout('standard');
+$PAGE->set_url($FULLME);
 
-if (! $course = get_record("course", "id", $courseid) ) {
-    error("That's an invalid course id");
+if (!$course = $DB->get_record('course', array('id' => $courseid))) {
+    print_error('invalidcourseid');
 }
 
-if ($course->category) {
-    print_header("$course->shortname: $strsearchresults", "$course->fullname",
-                 "<a href=\"../../course/view.php?id=$course->id\">$course->shortname</a> ->
-                 $strsearchresults", "form.query");
-} else {
-    print_header("$course->shortname: $strsearchresults", "$course->fullname",
-                 "$strsearchresults", "form.query");
-}
+require_course_login($course);
 
-$start = (MAXRESULTSPERPAGE*$page);
-
-//Process the query
-$query = trim(strip_tags($query));
-
-//Launch the SQL quey
-$glossarydata = search( $query, $course, $start, $countentries);
-
+$strbooks = get_string('modulenameplural', 'book');
 $searchbooks = get_string('bookssearch', 'block_search_books');
 $searchresults = get_string('searchresults', 'block_search_books');
 $strresults = get_string('results', 'block_search_books');
 $ofabout = get_string('ofabout', 'block_search_books');
 $for = get_string('for', 'block_search_books');
 $seconds = get_string('seconds', 'block_search_books');
+
+$PAGE->navbar->add($strbooks, new moodle_url('/mod/book/index.php', array('id' => $course->id)));
+$PAGE->navbar->add($searchresults);
+
+$PAGE->set_title($searchresults);
+$PAGE->set_heading($course->fullname);
+echo $OUTPUT->header();
+
+$start = (MAXRESULTSPERPAGE * $page);
+
+//Process the query
+$query = trim(strip_tags($query));
+
+//Launch the SQL quey
+$bookresults = search( $query, $course, $start, $countentries);
 
 $coursefield = '<input type="hidden" name="courseid" value="'.$course->id.'"/>';
 $pagefield = '<input type="hidden" name="page" value="0"/>';
@@ -170,9 +168,9 @@ $form = '<form method="get" action="'.$CFG->wwwroot.'/blocks/search_books/search
 
 echo '<div style="margin-left: auto; margin-right: auto; width: 100%; text-align: center">' . $form . '</div>';
 
-//Process $glossarydata, if present
+//Process $bookresults, if present
 $startindex = $start;
-$endindex = $start + count($glossarydata);
+$endindex = $start + count($bookresults);
 
 $countresults = $countentries;
 
@@ -180,14 +178,14 @@ $countresults = $countentries;
 $page_bar = glossary_get_paging_bar($countresults, $page, MAXRESULTSPERPAGE, "search_books.php?query=".urlencode(stripslashes($query))."&amp;courseid=$course->id&amp;");
 
 //Iterate over results
-if (!empty($glossarydata)) {
+if (!empty($bookresults)) {
     //Print header
     echo '<p style="text-align: right">'.$strresults.' <b>'.($startindex+1).'</b> - <b>'.$endindex.'</b> '.$ofabout.'<b> '.$countresults.' </b>'.$for.'<b> "'.s($query).'"</b>&nbsp;';
     echo $page_bar;
     //Prepare each entry (hilight, footer...)
     echo '<ul>';
-    foreach ($glossarydata as $entry) {
-        $book = get_record('book', 'id', $entry->bookid);
+    foreach ($bookresults as $entry) {
+        $book = $DB->get_record('book', array('id' => $entry->bookid));
         $cm = get_coursemodule_from_instance("book", $book->id, $course->id);
 
         //To show where each entry belongs to
@@ -198,7 +196,7 @@ if (!empty($glossarydata)) {
     echo $page_bar;
 } else {
     echo '<br />';
-    print_simple_box(get_string("norecordsfound","block_search_glossaries"),'CENTER');
+    echo $OUTPUT->box(get_string("norecordsfound","block_search_books"),'CENTER');
 }
 
-print_footer($course);
+echo $OUTPUT->footer();
