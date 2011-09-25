@@ -29,7 +29,7 @@ $plugin->version   = 2011092500; // The current block version (Date: YYYYMMDDXX)
 $plugin->requires  = 2010112400; // Requires this Moodle version (v2.0.0)
 $plugin->component = 'block_search_books';
 
-$maturity = MATURITY_ALPHA;
+$plugin->maturity = MATURITY_ALPHA;
 
 $plugin->dependencies = array(
     'mod_book' =>  2011032000,     // Requires mod_block version (20_STABLE)
