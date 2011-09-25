@@ -1,6 +1,7 @@
 <?php
 
-// This file is part of Moodle - http://moodle.org/
+// This file is part of block_search_books,
+// one contrib block for Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,19 +17,20 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package    blocks
+ * @package    block
  * @subpackage search_books
- * @copyright  2003 onwards Eloy Lafuente (stronk7) {@link http://stronk7.com}
+ * @copyright  2009 onwards Eloy Lafuente (stronk7) {@link http://stronk7.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+defined('MOODLE_INTERNAL') || die();
 
 /**
  * This block enables searching within all the books in a given course
  */
 class block_search_books extends block_base {
     function init() {
-        $this->title = get_string('blockname','block_search_books');
-        $this->version = 20090818;
+        $this->title = get_string('pluginname','block_search_books');
     }
 
     function has_config() {return false;}
@@ -38,10 +40,26 @@ class block_search_books extends block_base {
     }
 
     function get_content() {
-        global $CFG, $USER;
+        global $CFG, $USER, $COURSE, $DB;
+
+        // Book not available, we won't do anything in the block
+        if (!file_exists($CFG->dirroot . '/mod/book/lib.php')) {
+            //return '';
+        }
 
         if ($this->content !== NULL) {
             return $this->content;
+        }
+
+        if ($COURSE->id == $this->page->course->id) {
+            $course = $COURSE;
+        } else {
+            $course = $DB->get_record('course', array('id' => $this->page->course->id));
+        }
+
+        // Course not found, we won't do anything in the block
+        if (empty($course)) {
+            return '';
         }
 
         $this->content = new stdClass;
@@ -52,28 +70,18 @@ class block_search_books extends block_base {
             return $this->content;
         }
 
-        $course = get_record('course', 'id', $this->instance->pageid);
-
         $searchbooks = get_string('bookssearch', 'block_search_books');
 
-        $rowstart = '<tr><td align="center">';
-        $rowend = '</td></tr>';
-
-        $coursefield = '<input type="hidden" name="courseid" value="'.$course->id.'">';
-        $pagefield = '<input type="hidden" name="page" value="0">';
-        $searchbox = '<input type="text" name="query" size="20" maxlength="255" value="">';
-        $submitbutton = '<br /><input type="submit" name="submit" value="'.$searchbooks.'">';
-
-        $row2content = $coursefield.$pagefield.$searchbox.$submitbutton;
-
-        $row2 = $rowstart.$row2content.$rowend;
-
-        $table = '<table>'.$row2.'</table>';
-        $form = '<form method="GET" action="'.$CFG->wwwroot.'/blocks/search_books/search_books.php">'.$table.'</form>';
-        $this->content->text = $form;
+        $this->content->text  = '<div class="searchform">';
+        $this->content->text .= '<form action="' . $CFG->wwwroot . '/blocks/search_books/search_books.php" style="display:inline">';
+        $this->content->text .= '<fieldset class="invisiblefieldset">';
+        $this->content->text .= '<input name="courseid" type="hidden" value="' . $course->id . '" />';
+        $this->content->text .= '<input name="page" type="hidden" value="0" />';
+        $this->content->text .= '<label class="accesshide" for="searchbooksquery">' . $searchbooks . '</label>';
+        $this->content->text .= '<input id="searchbooksquery" name="query" size="20" maxlength="255" value="" />';
+        $this->content->text .= '<br /><input type="submit" name="submit" value="' . $searchbooks . '"/>';
+        $this->content->text .= '</fieldset></form></div>';
 
         return $this->content;
     }
 }
-
-?>
