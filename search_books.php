@@ -1,7 +1,6 @@
 <?php
-
 // This file is part of block_search_books,
-// one contrib block for Moodle - http://moodle.org/
+// a contrib block for Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,32 +16,33 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package    block
- * @subpackage search_books
+ * Search books main script.
+ *
+ * @package    block_search_books
  * @copyright  2009 onwards Eloy Lafuente (stronk7) {@link http://stronk7.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Search for query terms in course books
-
 require_once('../../config.php');
 require_once($CFG->dirroot . '/mod/glossary/lib.php');
 
-DEFINE('MAXRESULTSPERPAGE', 100);  // Limit results per page
-DEFINE('MAXPAGEALLOWED', 99);      // Limit number of pages to show
+define('BOOKMAXRESULTSPERPAGE', 100);  // Limit results per page.
 
 $courseid = required_param('courseid', PARAM_INT);
-$query    = required_param('query', PARAM_NOTAGS);
+$query    = required_param('bsquery', PARAM_NOTAGS);
 $page     = optional_param('page', 0, PARAM_INT);
 
-function search( $query, $course, $offset, &$countentries ) {
+function search($query, $course, $offset, &$countentries) {
 
     global $CFG, $USER, $DB;
 
-    /// Some differences in syntax for PostgreSQL
+    // TODO: Use the search style @ sql.php and use placeholders!
+
+    // Some differences in syntax for PostgreSQL.
+    // TODO: Modify this to support also MSSQL and Oracle.
     if ($CFG->dbfamily == "postgres") {
-        $LIKE = "ILIKE";   // case-insensitive
-        $NOTLIKE = "NOT ILIKE";   // case-insensitive
+        $LIKE = "ILIKE";   // Case-insensitive.
+        $NOTLIKE = "NOT ILIKE";   // Case-insensitive.
         $REGEXP = "~*";
         $NOTREGEXP = "!~*";
     } else {
@@ -52,7 +52,7 @@ function search( $query, $course, $offset, &$countentries ) {
         $NOTREGEXP = "NOT REGEXP";
     }
 
-    // Perform the search only in books fulfilling mod/book:read and (visible or moodle/course:viewhiddenactivitie)
+    // Perform the search only in books fulfilling mod/book:read and (visible or moodle/course:viewhiddenactivities)
     $bookids = array();
     if (! $books = get_all_instances_in_course('book', $course)) {
         notice(get_string('thereareno', 'moodle', get_string('modulenameplural', 'book')), "../../course/view.php?id=$course->id");
@@ -60,7 +60,7 @@ function search( $query, $course, $offset, &$countentries ) {
     }
     foreach ($books as $book) {
         $cm = get_coursemodule_from_instance("book", $book->id, $course->id);
-        $context = get_context_instance(CONTEXT_MODULE, $cm->id);
+        $context = context_module::instance($cm->id);
         if ($cm->visible || has_capability('moodle/course:viewhiddenactivities', $context)) {
             if (has_capability('mod/book:read', $context)) {
                 $bookids[] = $book->id;
@@ -68,7 +68,7 @@ function search( $query, $course, $offset, &$countentries ) {
         }
     }
 
-    // Seach starts
+    // Seach starts.
     $titlesearch = "";
     $contentsearch = "";
 
@@ -97,9 +97,10 @@ function search( $query, $course, $offset, &$countentries ) {
         }
     }
 
-    //Add seach conditions in titles and contents
+    // Add seach conditions in titles and contents.
     $where = "AND (( $titlesearch) OR ($contentsearch) ) ";
 
+    // Main query, only to allowed books and not hidden chapters.
     $sqlselect  = "SELECT DISTINCT bc.*";
     $sqlfrom    = "FROM {$CFG->prefix}book_chapters bc,
                         {$CFG->prefix}book b";
@@ -110,14 +111,15 @@ function search( $query, $course, $offset, &$countentries ) {
                          $where";
     $sqlorderby = "ORDER BY bc.bookid, bc.pagenum";
 
+    // Set page limits.
     $limitfrom = $offset;
     $limitnum = 0;
     if ( $offset >= 0 ) {
-        $limitnum = MAXRESULTSPERPAGE;
+        $limitnum = BOOKMAXRESULTSPERPAGE;
     }
 
     $countentries = $DB->count_records_sql("select count(*) $sqlfrom $sqlwhere", array());
-    $allentries =   $DB->get_records_sql("$sqlselect $sqlfrom $sqlwhere $sqlorderby", array(), $limitfrom, $limitnum);
+    $allentries = $DB->get_records_sql("$sqlselect $sqlfrom $sqlwhere $sqlorderby", array(), $limitfrom, $limitnum);
 
     return $allentries;
 }
@@ -149,17 +151,17 @@ $PAGE->set_title($searchresults);
 $PAGE->set_heading($course->fullname);
 echo $OUTPUT->header();
 
-$start = (MAXRESULTSPERPAGE * $page);
+$start = (BOOKMAXRESULTSPERPAGE * $page);
 
-//Process the query
+// Process the query.
 $query = trim(strip_tags($query));
 
-//Launch the SQL quey
+// Launch the SQL quey.
 $bookresults = search( $query, $course, $start, $countentries);
 
 $coursefield = '<input type="hidden" name="courseid" value="'.$course->id.'"/>';
 $pagefield = '<input type="hidden" name="page" value="0"/>';
-$searchbox = '<input type="text" name="query" size="20" maxlength="255" value="'.s($query).'"/>';
+$searchbox = '<input type="text" name="bsquery" size="20" maxlength="255" value="'.s($query).'"/>';
 $submitbutton = '<input type="submit" name="submit" value="'.$searchbooks.'"/>';
 
 $content = $coursefield.$pagefield.$searchbox.$submitbutton;
@@ -168,28 +170,28 @@ $form = '<form method="get" action="'.$CFG->wwwroot.'/blocks/search_books/search
 
 echo '<div style="margin-left: auto; margin-right: auto; width: 100%; text-align: center">' . $form . '</div>';
 
-//Process $bookresults, if present
+// Process $bookresults, if present.
 $startindex = $start;
 $endindex = $start + count($bookresults);
 
 $countresults = $countentries;
 
-//Print results page tip
-$page_bar = glossary_get_paging_bar($countresults, $page, MAXRESULTSPERPAGE, "search_books.php?query=".urlencode(stripslashes($query))."&amp;courseid=$course->id&amp;");
+// Print results page tip.
+$page_bar = glossary_get_paging_bar($countresults, $page, BOOKMAXRESULTSPERPAGE, "search_books.php?bsquery=".urlencode(stripslashes($query))."&amp;courseid=$course->id&amp;");
 
-//Iterate over results
+// Iterate over results.
 if (!empty($bookresults)) {
-    //Print header
-    echo '<p style="text-align: right">'.$strresults.' <b>'.($startindex+1).'</b> - <b>'.$endindex.'</b> '.$ofabout.'<b> '.$countresults.' </b>'.$for.'<b> "'.s($query).'"</b>&nbsp;';
+    // Print header
+    echo '<p style="text-align: right">'.$strresults.' <b>'.($startindex+1).'</b> - <b>'.$endindex.'</b> '.$ofabout.'<b> '.$countresults.' </b>'.$for.'<b> "'.s($query).'"</b></p>';
     echo $page_bar;
-    //Prepare each entry (hilight, footer...)
+    // Prepare each entry (hilight, footer...)
     echo '<ul>';
     foreach ($bookresults as $entry) {
         $book = $DB->get_record('book', array('id' => $entry->bookid));
         $cm = get_coursemodule_from_instance("book", $book->id, $course->id);
 
         //To show where each entry belongs to
-        $result = "<li style=\"margin-left:10%\"><a href=\"$CFG->wwwroot/mod/book/view.php?id=$cm->id\">".format_string($book->name,true)."</a>&nbsp;&raquo;&nbsp;<a href=\"$CFG->wwwroot/mod/book/view.php?id=$cm->id&amp;chapterid=$entry->id\">".format_string($entry->title,true)."</a></li>";
+        $result = "<li><a href=\"$CFG->wwwroot/mod/book/view.php?id=$cm->id\">".format_string($book->name,true)."</a>&nbsp;&raquo;&nbsp;<a href=\"$CFG->wwwroot/mod/book/view.php?id=$cm->id&amp;chapterid=$entry->id\">".format_string($entry->title,true)."</a></li>";
         echo $result;
     }
     echo '</ul>';

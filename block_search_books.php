@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of block_search_books,
 // one contrib block for Moodle - http://moodle.org/
 //
@@ -17,17 +16,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package    block
- * @subpackage search_books
+ * Search books block main file.
+ *
+ * This block enables searching within all the books in a given course.
+ *
+ * @package    block_search_books
  * @copyright  2009 onwards Eloy Lafuente (stronk7) {@link http://stronk7.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-/**
- * This block enables searching within all the books in a given course
- */
 class block_search_books extends block_base {
     function init() {
         $this->title = get_string('pluginname','block_search_books');
@@ -41,11 +40,6 @@ class block_search_books extends block_base {
 
     function get_content() {
         global $CFG, $USER, $COURSE, $DB;
-
-        // Book not available, we won't do anything in the block
-        if (!file_exists($CFG->dirroot . '/mod/book/lib.php')) {
-            return '';
-        }
 
         if ($this->content !== NULL) {
             return $this->content;
@@ -78,7 +72,7 @@ class block_search_books extends block_base {
         $this->content->text .= '<input name="courseid" type="hidden" value="' . $course->id . '" />';
         $this->content->text .= '<input name="page" type="hidden" value="0" />';
         $this->content->text .= '<label class="accesshide" for="searchbooksquery">' . $searchbooks . '</label>';
-        $this->content->text .= '<input id="searchbooksquery" name="query" size="20" maxlength="255" value="" />';
+        $this->content->text .= '<input id="searchbooksquery" name="bsquery" size="20" maxlength="255" value="" />';
         $this->content->text .= '<br /><input type="submit" name="submit" value="' . $searchbooks . '"/>';
         $this->content->text .= '</fieldset></form></div>';
 

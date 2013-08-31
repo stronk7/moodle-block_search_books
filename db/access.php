@@ -16,7 +16,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Search books version file.
+ * Search books capabilities file.
  *
  * @package    block_search_books
  * @copyright  2009 onwards Eloy Lafuente (stronk7) {@link http://stronk7.com}
@@ -25,12 +25,18 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2013083100; // The current block version (Date: YYYYMMDDXX)
-$plugin->requires  = 2012062500; // Requires this Moodle version (v2.3.0)
-$plugin->component = 'block_search_books';
+$capabilities = array(
 
-$plugin->maturity = MATURITY_ALPHA;
+    'block/search_books:addinstance' => array(
+        'riskbitmask' => RISK_SPAM | RISK_XSS,
 
-$plugin->dependencies = array(
-    'mod_book'     => 2012061700,  // Requires mod_book version (v2.3.0)
-    'mod_glossary' => 2012061700); // Requires mod_glossary version (v2.3.0)
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_BLOCK,
+        'archetypes' => array(
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        ),
+
+        'clonepermissionsfrom' => 'moodle/site:manageblocks'
+    ),
+);
