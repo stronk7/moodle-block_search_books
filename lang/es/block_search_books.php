@@ -1,6 +1,5 @@
 <?php
-// This file is part of block_search_books,
-// a contrib block for Moodle - http://moodle.org/
+// This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -34,4 +33,4 @@ $string['norecordsfound'] = 'No se encontraron datos';
 $string['results'] = 'Resultados';
 $string['format'] = 'Selecciona el formato en el que quiere visualizar los resultados';
 $string['seconds'] = 'segundos';
-$string['searchresults'] = 'Resultados de la Búsqueda en libros';
+$string['searchresults'] = 'Resultados de la búsqueda en libros';

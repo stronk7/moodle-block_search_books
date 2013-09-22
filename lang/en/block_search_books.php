@@ -1,6 +1,5 @@
 <?php
-// This file is part of block_search_books,
-// a contrib block for Moodle - http://moodle.org/
+// This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -25,13 +24,13 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['pluginname'] = 'Search Books';
+$string['pluginname'] = 'Search books';
 
-$string['bookssearch'] = 'Search Books';
+$string['bookssearch'] = 'Search books';
 $string['ofabout'] = 'of about';
 $string['for'] = 'for';
-$string['norecordsfound'] = 'No Records Found';
+$string['norecordsfound'] = 'No records found';
 $string['results'] = 'Results';
 $string['format'] = 'Select the desired format to view the results';
 $string['seconds'] = 'seconds';
-$string['searchresults'] = 'Search Book Results';
+$string['searchresults'] = 'Search book results';
