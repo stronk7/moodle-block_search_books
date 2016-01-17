@@ -24,6 +24,7 @@
 
 require_once('../../config.php');
 require_once($CFG->dirroot . '/mod/glossary/lib.php');
+require_once($CFG->libdir.'/searchlib.php');
 
 define('BOOKMAXRESULTSPERPAGE', 100);  // Limit results per page.
 
@@ -35,28 +36,66 @@ function search($query, $course, $offset, &$countentries) {
 
     global $CFG, $USER, $DB;
 
-    // TODO: Use the search style @ sql.php and use placeholders!
+    // Perform the search only in books fulfilling mod/book:read and (visible or moodle/course:viewhiddenactivities)
+    $bookids = book_search_get_readble_books( $course );
 
-    // Some differences in syntax for PostgreSQL.
-    // TODO: Modify this to support also MSSQL and Oracle.
-    if ($CFG->dbfamily == "postgres") {
-        $LIKE = "ILIKE";   // Case-insensitive.
-        $NOTLIKE = "NOT ILIKE";   // Case-insensitive.
-        $REGEXP = "~*";
-        $NOTREGEXP = "!~*";
-    } else {
-        $LIKE = "LIKE";
-        $NOTLIKE = "NOT LIKE";
-        $REGEXP = "REGEXP";
-        $NOTREGEXP = "NOT REGEXP";
+    // transform the search query into safe SQL queries
+    $searchterms = explode(" ",$query);
+    $parser = new search_parser();
+    $lexer = new search_lexer( $parser );
+
+    if ( $lexer->parse( $query ) ) {
+        $parsearray = $parser->get_parsed_array();
+        list($messagesearch, $msparams) = 
+            search_generate_SQL($parsearray, 'bc.title', 'bc.content' );
     }
 
-    // Perform the search only in books fulfilling mod/book:read and (visible or moodle/course:viewhiddenactivities)
-    $bookids = array();
+    // Main query, only to allowed books and not hidden chapters.
+    $selectsql = "SELECT DISTINCT bc.*";
+    $fromsql   = "  FROM {book_chapters} bc, {book} b";
+
+    list( $insql, $inparams ) = $DB->get_in_or_equal($bookids, SQL_PARAMS_NAMED );
+    
+    $params = array_merge( Array( 'courseid' => $course->id ),
+                           $inparams, $msparams);
+
+    $wheresql  = "  WHERE b.course = :courseid
+                          AND b.id $insql 
+                          AND bc.bookid = b.id 
+                          AND bc.hidden = 0
+                          AND $messagesearch ";
+    $ordersql  = "  ORDER BY bc.bookid, bc.pagenum";
+
+
+    // Set page limits.
+    $limitfrom = $offset;
+    $limitnum = 0;
+    if ( $offset >= 0 ) {
+        $limitnum = BOOKMAXRESULTSPERPAGE;
+    }
+    $countentries = $DB->count_records_sql("select count(*) $fromsql $wheresql", $params);
+
+    $allentries = $DB->get_records_sql("$selectsql $fromsql $wheresql $ordersql", $params, $limitfrom, $limitnum);
+
+    return $allentries;
+}
+
+/**
+ * return a list of book ids for the books which can be read/viewed
+ *
+ * @param stdClass $course  course object
+ * @return array of book ids
+ */
+
+function book_search_get_readble_books( $course ) {
+
+    $bookids = Array();
+
     if (! $books = get_all_instances_in_course('book', $course)) {
         notice(get_string('thereareno', 'moodle', get_string('modulenameplural', 'book')), "../../course/view.php?id=$course->id");
         die;
     }
+
     foreach ($books as $book) {
         $cm = get_coursemodule_from_instance("book", $book->id, $course->id);
         $context = context_module::instance($cm->id);
@@ -66,61 +105,7 @@ function search($query, $course, $offset, &$countentries) {
             }
         }
     }
-
-    // Seach starts.
-    $titlesearch = "";
-    $contentsearch = "";
-
-    $searchterms = explode(" ",$query);
-
-    foreach ($searchterms as $searchterm) {
-
-        if ($titlesearch) {
-            $titlesearch .= " AND ";
-        }
-        if ($contentsearch) {
-            $contentsearch .= " AND ";
-        }
-
-        if (substr($searchterm,0,1) == "+") {
-            $searchterm = substr($searchterm,1);
-            $titlesearch .= " bc.title $REGEXP '(^|[^a-zA-Z0-9])$searchterm([^a-zA-Z0-9]|$)' ";
-            $contentsearch .= " bc.content $REGEXP '(^|[^a-zA-Z0-9])$searchterm([^a-zA-Z0-9]|$)' ";
-        } else if (substr($searchterm,0,1) == "-") {
-            $searchterm = substr($searchterm,1);
-            $titlesearch .= " bc.title $NOTREGEXP '(^|[^a-zA-Z0-9])$searchterm([^a-zA-Z0-9]|$)' ";
-            $contentsearch .= " bc.content $NOTREGEXP '(^|[^a-zA-Z0-9])$searchterm([^a-zA-Z0-9]|$)' ";
-        } else {
-            $titlesearch .= " bc.title $LIKE '%$searchterm%' ";
-            $contentsearch .= " bc.content $LIKE '%$searchterm%' ";
-        }
-    }
-
-    // Add seach conditions in titles and contents.
-    $where = "AND (( $titlesearch) OR ($contentsearch) ) ";
-
-    // Main query, only to allowed books and not hidden chapters.
-    $sqlselect  = "SELECT DISTINCT bc.*";
-    $sqlfrom    = "FROM {$CFG->prefix}book_chapters bc,
-                        {$CFG->prefix}book b";
-    $sqlwhere   = "WHERE b.course = $course->id AND
-                         b.id IN (" . implode($bookids, ', ') . ") AND
-                         bc.bookid = b.id AND
-                         bc.hidden = 0
-                         $where";
-    $sqlorderby = "ORDER BY bc.bookid, bc.pagenum";
-
-    // Set page limits.
-    $limitfrom = $offset;
-    $limitnum = 0;
-    if ( $offset >= 0 ) {
-        $limitnum = BOOKMAXRESULTSPERPAGE;
-    }
-
-    $countentries = $DB->count_records_sql("select count(*) $sqlfrom $sqlwhere", array());
-    $allentries = $DB->get_records_sql("$sqlselect $sqlfrom $sqlwhere $sqlorderby", array(), $limitfrom, $limitnum);
-
-    return $allentries;
+    return $bookids;
 }
 
 //////////////////////////////////////////////////////////
