@@ -34,3 +34,5 @@ $string['results'] = 'Výsledok hľadania';
 $string['format'] = 'Zvoľte formát zobrazenia výsledku vyhľadávania';
 $string['seconds'] = 'sekúnd';
 $string['searchresults'] = 'Výsledok vyhľadávania';
+$string['search_books:addinstance'] = 'Pridať nový vyhľadávač Book inštanciu';
+$string['emptyquery'] = 'Žiadne kľúčové slová pre vyhľadávanie poskytované';

@@ -34,3 +34,5 @@ $string['results'] = 'Results';
 $string['format'] = 'Select the desired format to view the results';
 $string['seconds'] = 'seconds';
 $string['searchresults'] = 'Search book results';
+$string['search_books:addinstance'] = 'Add a new Search Book instance';
+$string['emptyquery'] = 'No search keywords provided';
