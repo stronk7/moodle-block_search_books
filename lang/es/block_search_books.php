@@ -34,3 +34,5 @@ $string['results'] = 'Resultados';
 $string['format'] = 'Selecciona el formato en el que quiere visualizar los resultados';
 $string['seconds'] = 'segundos';
 $string['searchresults'] = 'Resultados de la búsqueda en libros';
+$string['search_books:addinstance'] = 'Añadir una nueva instancia de búsqueda de libro';
+$string['emptyquery'] = 'No hay palabras clave de búsqueda proporcionados';

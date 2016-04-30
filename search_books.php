@@ -47,7 +47,7 @@ function search($query, $course, $offset, &$countentries) {
     if ( $lexer->parse( $query ) ) {
         $parsearray = $parser->get_parsed_array();
         list($messagesearch, $msparams) = 
-            search_generate_SQL($parsearray, 'bc.title', 'bc.content' );
+            search_generate_SQL($parsearray, 'bc.title', 'bc.content', null, null, null, null, null, null);
     }
 
     // Main query, only to allowed books and not hidden chapters.
@@ -140,8 +140,12 @@ $start = (BOOKMAXRESULTSPERPAGE * $page);
 // Process the query.
 $query = trim(strip_tags($query));
 
+if (empty($query)) {
+    notice(get_string('emptyquery', 'block_search_books'), "../../course/view.php?id=$course->id");
+}
+
 // Launch the SQL quey.
-$bookresults = search( $query, $course, $start, $countentries);
+$bookresults = search($query, $course, $start, $countentries);
 
 $coursefield = '<input type="hidden" name="courseid" value="'.$course->id.'"/>';
 $pagefield = '<input type="hidden" name="page" value="0"/>';
